@@ -201,7 +201,7 @@ class TestScheduleEdgeCases:
 
         schedule = WeeklySchedule()
         schedule.monday = DaySchedule(enabled=True, start_time="22:00", stop_time="06:00")
-        manager = ScheduleManager(schedule)
+        manager = schedule_module.ScheduleManager(schedule)
 
         assert manager.get_next_active_time() == fixed_now
 
@@ -222,6 +222,6 @@ class TestScheduleEdgeCases:
             day.enabled = False
             schedule.set_day(i, day)
 
-        manager = ScheduleManager(schedule)
+        manager = schedule_module.ScheduleManager(schedule)
 
         assert manager.get_next_active_time() is None

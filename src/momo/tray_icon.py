@@ -137,7 +137,7 @@ class TrayIcon:
             MenuItem(
                 autostart_text,
                 self._on_autostart_clicked,
-                checked=lambda item: self._autostart_enabled
+                checked=lambda item: self._get_autostart_enabled()
             ),
             Menu.SEPARATOR,
             MenuItem(
@@ -192,6 +192,11 @@ class TrayIcon:
             if self._icon:
                 self._icon.icon = self._get_current_icon()
                 self._icon.menu = self._create_menu()
+
+    def _get_autostart_enabled(self) -> bool:
+        """Thread-safe getter for autostart state."""
+        with self._lock:
+            return self._autostart_enabled
     
     def set_active(self, is_active: bool) -> None:
         """
