@@ -6,9 +6,8 @@ to prevent system idle detection.
 """
 
 import ctypes
-from ctypes import c_long, Structure, Union, POINTER, byref
+from ctypes import c_long, Structure, Union, byref
 from typing import Tuple, Callable, Optional
-import threading
 import time
 
 

@@ -6,8 +6,7 @@ using Windows GetLastInputInfo API.
 """
 
 import ctypes
-import time
-from ctypes import Structure, c_uint, sizeof, byref
+from ctypes import Structure, c_uint, c_ulonglong, sizeof, byref, windll
 from typing import Callable, Optional
 import threading
 
@@ -71,9 +70,10 @@ class IdleDetector:
         last_input_info.cbSize = sizeof(LASTINPUTINFO)
         
         if ctypes.windll.user32.GetLastInputInfo(byref(last_input_info)):
-            # GetTickCount returns milliseconds since system start
-            current_tick = ctypes.windll.kernel32.GetTickCount()
-            elapsed_ms = current_tick - last_input_info.dwTime
+            # GetTickCount64 returns milliseconds since system start (64-bit, no wrap)
+            current_tick = ctypes.windll.kernel32.GetTickCount64()
+            # dwTime is still 32-bit, so handle potential wrap-around
+            elapsed_ms = (current_tick - last_input_info.dwTime) & 0xFFFFFFFF
             return elapsed_ms / 1000.0
         
         return 0.0

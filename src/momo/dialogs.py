@@ -9,8 +9,8 @@ thread marshalling when called from pystray callbacks.
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox, simpledialog
-from typing import Callable, Optional
+from tkinter import messagebox
+from typing import Optional
 import threading
 import queue
 from .settings import Settings, WeeklySchedule, DaySchedule
@@ -382,7 +382,9 @@ def show_threshold_dialog(current_value: int = 300) -> Optional[int]:
     """
     Show the threshold configuration dialog.
     
-    This function is thread-safe and can be called from any thread.
+    Note: This runs the dialog in a separate thread to avoid blocking.
+    Tkinter itself is not thread-safe, but creating a new Tk instance
+    per dialog call works for simple use cases.
     
     Args:
         current_value: Current threshold in seconds
@@ -408,7 +410,9 @@ def show_schedule_dialog(schedule: Optional[WeeklySchedule] = None) -> Optional[
     """
     Show the schedule configuration dialog.
     
-    This function is thread-safe and can be called from any thread.
+    Note: This runs the dialog in a separate thread to avoid blocking.
+    Tkinter itself is not thread-safe, but creating a new Tk instance
+    per dialog call works for simple use cases.
     
     Args:
         schedule: Current schedule

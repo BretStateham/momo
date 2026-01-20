@@ -9,7 +9,6 @@ import os
 import sys
 import winreg
 from typing import Optional
-from pathlib import Path
 
 
 class AutoStartManager:
@@ -66,7 +65,7 @@ class AutoStartManager:
                     return bool(value)
                 except FileNotFoundError:
                     return False
-        except WindowsError:
+        except OSError:
             return False
     
     def enable(self) -> bool:
@@ -91,7 +90,7 @@ class AutoStartManager:
                     self._executable_path
                 )
             return True
-        except WindowsError as e:
+        except OSError as e:
             print(f"Failed to enable auto-start: {e}")
             return False
     
@@ -115,7 +114,7 @@ class AutoStartManager:
                     # Already disabled
                     pass
             return True
-        except WindowsError as e:
+        except OSError as e:
             print(f"Failed to disable auto-start: {e}")
             return False
     
@@ -153,5 +152,5 @@ class AutoStartManager:
                     return value
                 except FileNotFoundError:
                     return None
-        except WindowsError:
+        except OSError:
             return None

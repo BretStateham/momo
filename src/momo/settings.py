@@ -9,7 +9,7 @@ import json
 import os
 import sys
 from dataclasses import dataclass, field, asdict
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 from pathlib import Path
 
 
@@ -152,7 +152,7 @@ class SettingsManager:
             self._settings_path = self._get_default_settings_path()
         
         self._settings: Settings = Settings()
-        self._on_settings_changed: Optional[callable] = None
+        self._on_settings_changed: Optional[Callable[[Settings], None]] = None
     
     def _get_default_settings_path(self) -> Path:
         """Get the default settings file path (same directory as executable)."""
@@ -226,7 +226,7 @@ class SettingsManager:
         if self._on_settings_changed:
             self._on_settings_changed(self._settings)
     
-    def set_settings_changed_callback(self, callback: callable) -> None:
+    def set_settings_changed_callback(self, callback: Callable[[Settings], None]) -> None:
         """
         Set callback to be called when settings change.
         

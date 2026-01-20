@@ -5,7 +5,7 @@ Handles schedule evaluation to determine if MoMo should be active
 based on the current day and time.
 """
 
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from typing import Optional
 from .settings import WeeklySchedule, DaySchedule
 
@@ -46,9 +46,17 @@ class ScheduleManager:
             
         Returns:
             time object
+            
+        Raises:
+            ValueError: If time_str is not in valid HH:MM format
         """
-        parts = time_str.split(':')
-        return time(int(parts[0]), int(parts[1]))
+        try:
+            parts = time_str.split(':')
+            if len(parts) != 2:
+                raise ValueError(f"Invalid time format: {time_str}")
+            return time(int(parts[0]), int(parts[1]))
+        except (ValueError, IndexError) as e:
+            raise ValueError(f"Invalid time format '{time_str}': expected HH:MM") from e
     
     def _is_time_in_range(self, current: time, start: time, end: time) -> bool:
         """
@@ -137,7 +145,6 @@ class ScheduleManager:
             # Calculate the datetime for this day
             target_date = now.date()
             if day_offset > 0:
-                from datetime import timedelta
                 target_date = now.date() + timedelta(days=day_offset)
             
             target_datetime = datetime.combine(target_date, start_time)

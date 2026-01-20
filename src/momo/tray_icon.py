@@ -5,13 +5,10 @@ Provides the system tray icon and context menu for MoMo.
 """
 
 import threading
-from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 from PIL import Image, ImageDraw
 import pystray
 from pystray import MenuItem, Menu
-
-if TYPE_CHECKING:
-    from pystray import Icon
 
 
 class TrayIcon:
@@ -33,7 +30,7 @@ class TrayIcon:
     
     def __init__(self):
         """Initialize the tray icon."""
-        self._icon: Optional["Icon"] = None
+        self._icon: Any = None  # pystray.Icon instance
         self._is_active = False
         self._is_monitoring = True
         
@@ -96,7 +93,6 @@ class TrayIcon:
         )
         
         # Mouse tail (curved line)
-        tail_start = (size // 2, size - body_margin)
         draw.arc(
             [size // 4, size - size // 3, size - size // 4, size],
             start=0, end=180,
