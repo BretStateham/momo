@@ -4,7 +4,7 @@ System Tray UI Module
 Provides the system tray icon and context menu for MoMo.
 """
 
-import threading
+
 from typing import Any, Callable, Optional, Tuple
 from PIL import Image, ImageDraw
 import pystray

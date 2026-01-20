@@ -9,7 +9,7 @@ import json
 import os
 import sys
 from dataclasses import dataclass, field, asdict
-from typing import Callable, Dict, List, Optional
+from typing import Dict, List, Optional, Callable
 from pathlib import Path
 
 
@@ -130,8 +130,12 @@ class Settings:
     def from_dict(cls, data: Dict) -> 'Settings':
         """Create from dictionary."""
         schedule_data = data.get('schedule', {})
+        # Validate idle_threshold_seconds is positive
+        idle_threshold = data.get('idle_threshold_seconds', 300)
+        if not isinstance(idle_threshold, int) or idle_threshold <= 0:
+            idle_threshold = 300  # Use default if invalid
         return cls(
-            idle_threshold_seconds=data.get('idle_threshold_seconds', 300),
+            idle_threshold_seconds=idle_threshold,
             auto_start=data.get('auto_start', False),
             monitoring_enabled=data.get('monitoring_enabled', True),
             schedule=WeeklySchedule.from_dict(schedule_data),
