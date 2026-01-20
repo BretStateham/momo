@@ -54,7 +54,13 @@ class ScheduleManager:
             parts = time_str.split(':')
             if len(parts) != 2:
                 raise ValueError(f"Invalid time format: {time_str}")
-            return time(int(parts[0]), int(parts[1]))
+            hour = int(parts[0])
+            minute = int(parts[1])
+            if not (0 <= hour <= 23):
+                raise ValueError(f"Hour must be 0-23, got {hour}")
+            if not (0 <= minute <= 59):
+                raise ValueError(f"Minute must be 0-59, got {minute}")
+            return time(hour, minute)
         except (ValueError, IndexError) as e:
             raise ValueError(f"Invalid time format '{time_str}': expected HH:MM") from e
     

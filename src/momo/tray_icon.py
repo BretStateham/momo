@@ -169,6 +169,7 @@ class TrayIcon:
         else:
             # No callback registered; just update local state
             self._autostart_enabled = desired_state
+            self._update_icon()
     
     def _on_exit_clicked(self, icon, item):
         """Handle exit click."""

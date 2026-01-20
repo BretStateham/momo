@@ -6,6 +6,7 @@ to prevent system idle detection.
 """
 
 import ctypes
+import ctypes.wintypes
 from ctypes import c_long, Structure, Union, byref
 from typing import Tuple, Callable, Optional
 import time
@@ -183,7 +184,3 @@ class MouseMover:
             callback: Function to call when movement ends.
         """
         self._movement_complete_callback = callback
-
-
-# Import wintypes for POINT structure
-import ctypes.wintypes

@@ -149,6 +149,7 @@ class MoMoApp:
         if success:
             self._settings.auto_start = is_enabled
             self._settings_manager.save()
+            self._tray_icon.set_autostart(is_enabled)
         else:
             # Revert the UI state if failed
             self._tray_icon.set_autostart(not is_enabled)
