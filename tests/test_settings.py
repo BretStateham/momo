@@ -117,6 +117,36 @@ class TestSettings:
         
         assert restored.idle_threshold_seconds == 600
         assert restored.auto_start is True
+    
+    def test_from_dict_with_negative_threshold(self):
+        """Test that negative idle_threshold_seconds defaults to 300."""
+        data = {'idle_threshold_seconds': -100}
+        settings = Settings.from_dict(data)
+        assert settings.idle_threshold_seconds == 300
+    
+    def test_from_dict_with_zero_threshold(self):
+        """Test that zero idle_threshold_seconds defaults to 300."""
+        data = {'idle_threshold_seconds': 0}
+        settings = Settings.from_dict(data)
+        assert settings.idle_threshold_seconds == 300
+    
+    def test_from_dict_with_float_threshold(self):
+        """Test that float idle_threshold_seconds defaults to 300."""
+        data = {'idle_threshold_seconds': 150.5}
+        settings = Settings.from_dict(data)
+        assert settings.idle_threshold_seconds == 300
+    
+    def test_from_dict_with_string_threshold(self):
+        """Test that string idle_threshold_seconds defaults to 300."""
+        data = {'idle_threshold_seconds': "not a number"}
+        settings = Settings.from_dict(data)
+        assert settings.idle_threshold_seconds == 300
+    
+    def test_from_dict_with_none_threshold(self):
+        """Test that None idle_threshold_seconds defaults to 300."""
+        data = {'idle_threshold_seconds': None}
+        settings = Settings.from_dict(data)
+        assert settings.idle_threshold_seconds == 300
 
 
 class TestSettingsManager:
