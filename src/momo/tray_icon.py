@@ -163,8 +163,8 @@ class TrayIcon:
         """Handle autostart toggle click."""
         desired_state = not self._autostart_enabled
         if self._on_toggle_autostart:
-            # Let the callback handle the state change
-            # The app will call set_autostart() to update our state if successful
+            # Let the callback handle the state change and update UI
+            # The callback is responsible for calling set_autostart() on success
             self._on_toggle_autostart(desired_state)
         else:
             # No callback registered; just update local state

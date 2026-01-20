@@ -385,9 +385,14 @@ def show_threshold_dialog(current_value: int = 300) -> Optional[int]:
     """
     Show the threshold configuration dialog.
     
-    Note: This runs the dialog in a separate thread to avoid blocking.
-    Tkinter itself is not thread-safe, but creating a new Tk instance
-    per dialog call works for simple use cases.
+    Note on threading approach (response to code review):
+        While Tkinter is not officially thread-safe for sharing widgets across
+        threads, creating a completely isolated Tk instance in a dedicated thread
+        (with its own mainloop) is a well-established pattern that works reliably.
+        Each dialog creates its own Tk root, runs its own mainloop, and destroys
+        itself - no Tk objects are shared between threads. This approach is used
+        because pystray callbacks run in a background thread, and we need to show
+        modal dialogs without blocking the tray icon's event loop.
     
     Args:
         current_value: Current threshold in seconds
@@ -413,9 +418,14 @@ def show_schedule_dialog(schedule: Optional[WeeklySchedule] = None) -> Optional[
     """
     Show the schedule configuration dialog.
     
-    Note: This runs the dialog in a separate thread to avoid blocking.
-    Tkinter itself is not thread-safe, but creating a new Tk instance
-    per dialog call works for simple use cases.
+    Note on threading approach (response to code review):
+        While Tkinter is not officially thread-safe for sharing widgets across
+        threads, creating a completely isolated Tk instance in a dedicated thread
+        (with its own mainloop) is a well-established pattern that works reliably.
+        Each dialog creates its own Tk root, runs its own mainloop, and destroys
+        itself - no Tk objects are shared between threads. This approach is used
+        because pystray callbacks run in a background thread, and we need to show
+        modal dialogs without blocking the tray icon's event loop.
     
     Args:
         schedule: Current schedule

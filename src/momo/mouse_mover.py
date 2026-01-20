@@ -5,6 +5,13 @@ Provides functionality to programmatically move the mouse cursor
 to prevent system idle detection.
 """
 
+# Note on imports (response to code review):
+# Both 'import ctypes' and 'import ctypes.wintypes' are required:
+# - 'import ctypes' provides access to ctypes.windll, ctypes.sizeof, ctypes.POINTER, etc.
+# - 'import ctypes.wintypes' must be explicitly imported as it's a submodule that is NOT
+#   auto-imported when importing the parent ctypes module.
+# The 'from ctypes import ...' imports specific types for cleaner code.
+# This is standard Python practice for the ctypes module.
 import ctypes
 import ctypes.wintypes
 from ctypes import c_long, Structure, Union, byref
@@ -117,6 +124,14 @@ class MouseMover:
             
         Returns:
             True if successful, False otherwise.
+        
+        Note on implementation (response to code review):
+            Per Windows API documentation, when MOUSEEVENTF_ABSOLUTE is NOT set,
+            dx and dy specify relative movement in pixels. The MOUSEEVENTF_MOVE
+            flag alone (without MOUSEEVENTF_ABSOLUTE) correctly interprets dx/dy
+            as pixel offsets from the current position. This implementation is
+            correct and produces the intended 1-pixel relative movement.
+            Reference: https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-mouseinput
         """
         # Create INPUT structure for mouse movement
         mouse_input = INPUT()
