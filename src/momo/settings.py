@@ -9,7 +9,7 @@ import json
 import os
 import sys
 from dataclasses import dataclass, field, asdict
-from typing import Dict, List, Optional, Callable
+from typing import Callable, Dict, Optional
 from pathlib import Path
 
 
