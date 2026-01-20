@@ -150,9 +150,10 @@ class TrayIcon:
         """Handle start/stop menu click."""
         with self._lock:
             self._is_monitoring = not self._is_monitoring
+            new_state = self._is_monitoring
         self._update_icon()
         if self._on_start_stop:
-            self._on_start_stop(self._is_monitoring)
+            self._on_start_stop(new_state)
     
     def _on_threshold_clicked(self, icon, item):
         """Handle threshold configuration click."""
