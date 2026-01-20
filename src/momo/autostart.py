@@ -38,8 +38,8 @@ class AutoStartManager:
     def _get_executable_path(self) -> str:
         """Get the path to the current executable."""
         if getattr(sys, 'frozen', False):
-            # Running as compiled executable
-            return sys.executable
+            # Running as compiled executable - quote path for spaces
+            return f'"{sys.executable}"'
         else:
             # Running as script - use pythonw to avoid console
             python_path = sys.executable

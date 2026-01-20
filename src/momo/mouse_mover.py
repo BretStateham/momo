@@ -152,20 +152,21 @@ class MouseMover:
         if self._movement_callback:
             self._movement_callback()
         
-        # Move right by 1 pixel
-        success1 = self.move_mouse_relative(self._move_distance, 0)
-        
-        # Small delay
-        time.sleep(0.05)
-        
-        # Move back left by 1 pixel
-        success2 = self.move_mouse_relative(-self._move_distance, 0)
-        
-        # Notify that movement is complete
-        if self._movement_complete_callback:
-            self._movement_complete_callback()
-        
-        return success1 and success2
+        try:
+            # Move right by 1 pixel
+            success1 = self.move_mouse_relative(self._move_distance, 0)
+            
+            # Small delay
+            time.sleep(0.05)
+            
+            # Move back left by 1 pixel
+            success2 = self.move_mouse_relative(-self._move_distance, 0)
+            
+            return success1 and success2
+        finally:
+            # Notify that movement is complete (always called)
+            if self._movement_complete_callback:
+                self._movement_complete_callback()
     
     def set_movement_callback(self, callback: Callable[[], None]) -> None:
         """

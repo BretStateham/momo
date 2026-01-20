@@ -54,7 +54,12 @@ class WeeklySchedule:
             
         Returns:
             DaySchedule for the specified day.
+            
+        Raises:
+            ValueError: If day_index is not in range 0-6.
         """
+        if not 0 <= day_index <= 6:
+            raise ValueError(f"day_index must be 0-6, got {day_index}")
         days = [
             self.monday, self.tuesday, self.wednesday,
             self.thursday, self.friday, self.saturday, self.sunday
@@ -68,7 +73,12 @@ class WeeklySchedule:
         Args:
             day_index: Day of week (0-6, Monday-Sunday)
             schedule: DaySchedule to set
+            
+        Raises:
+            ValueError: If day_index is not in range 0-6.
         """
+        if not 0 <= day_index <= 6:
+            raise ValueError(f"day_index must be 0-6, got {day_index}")
         day_names = ['monday', 'tuesday', 'wednesday', 'thursday', 
                      'friday', 'saturday', 'sunday']
         setattr(self, day_names[day_index], schedule)

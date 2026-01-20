@@ -12,12 +12,7 @@ import tkinter as tk
 from tkinter import messagebox
 from typing import Optional
 import threading
-import queue
 from .settings import Settings, WeeklySchedule, DaySchedule
-
-
-# Global queue for thread-safe dialog results
-_dialog_queue = queue.Queue()
 
 
 class ThresholdDialog:

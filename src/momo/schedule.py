@@ -177,7 +177,12 @@ class ScheduleManager:
             
         Returns:
             Day name string.
+            
+        Raises:
+            ValueError: If day_index is not in range 0-6.
         """
+        if not 0 <= day_index <= 6:
+            raise ValueError(f"day_index must be 0-6, got {day_index}")
         days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday',
                 'Friday', 'Saturday', 'Sunday']
         return days[day_index]
