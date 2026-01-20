@@ -5,6 +5,7 @@ Provides the system tray icon and context menu for MoMo.
 """
 
 
+import threading
 from typing import Any, Callable, Optional, Tuple
 from PIL import Image, ImageDraw
 import pystray
@@ -33,6 +34,7 @@ class TrayIcon:
         self._icon: Any = None  # pystray.Icon instance
         self._is_active = False
         self._is_monitoring = True
+        self._lock = threading.Lock()
         
         # Callbacks
         self._on_start_stop: Optional[Callable[[bool], None]] = None
@@ -180,9 +182,10 @@ class TrayIcon:
     
     def _update_icon(self):
         """Update the tray icon based on current state."""
-        if self._icon:
-            self._icon.icon = self._get_current_icon()
-            self._icon.menu = self._create_menu()
+        with self._lock:
+            if self._icon:
+                self._icon.icon = self._get_current_icon()
+                self._icon.menu = self._create_menu()
     
     def set_active(self, is_active: bool) -> None:
         """
@@ -275,9 +278,10 @@ class TrayIcon:
     
     def stop(self) -> None:
         """Stop the tray icon."""
-        if self._icon:
-            self._icon.stop()
-            self._icon = None
+        with self._lock:
+            if self._icon:
+                self._icon.stop()
+                self._icon = None
     
     def show_notification(self, title: str, message: str) -> None:
         """
@@ -287,5 +291,6 @@ class TrayIcon:
             title: Notification title
             message: Notification message
         """
-        if self._icon:
-            self._icon.notify(message, title)
+        with self._lock:
+            if self._icon:
+                self._icon.notify(message, title)

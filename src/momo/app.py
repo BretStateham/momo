@@ -51,7 +51,15 @@ class MoMoApp:
         self._setup_callbacks()
         
         # Sync autostart state
-        self._tray_icon.set_autostart(self._autostart_manager.is_enabled())
+        autostart_enabled = self._autostart_manager.is_enabled()
+        if self._settings.auto_start != autostart_enabled:
+            self._settings.auto_start = autostart_enabled
+            if not self._settings_manager.save():
+                show_error(
+                    "Settings Error",
+                    "Failed to save auto-start setting. Changes may not persist."
+                )
+        self._tray_icon.set_autostart(autostart_enabled)
         self._tray_icon.set_threshold(self._settings.idle_threshold_seconds)
         self._tray_icon.set_monitoring(self._settings.monitoring_enabled)
     
@@ -116,7 +124,11 @@ class MoMoApp:
     def _on_monitoring_toggled(self, is_enabled: bool):
         """Called when monitoring is toggled from tray menu."""
         self._settings.monitoring_enabled = is_enabled
-        self._settings_manager.save()
+        if not self._settings_manager.save():
+            show_error(
+                "Settings Error",
+                "Failed to save monitoring setting. Changes may not persist."
+            )
         
         if is_enabled:
             self._idle_detector.start_monitoring()
@@ -130,7 +142,11 @@ class MoMoApp:
         if result is not None:
             self._settings.idle_threshold_seconds = result
             self._idle_detector.threshold_seconds = result
-            self._settings_manager.save()
+            if not self._settings_manager.save():
+                show_error(
+                    "Settings Error",
+                    "Failed to save idle threshold. Changes may not persist."
+                )
             self._tray_icon.set_threshold(result)
     
     def _on_configure_schedule(self):
@@ -140,7 +156,11 @@ class MoMoApp:
         if result is not None:
             self._settings.schedule = result
             self._schedule_manager.schedule = result
-            self._settings_manager.save()
+            if not self._settings_manager.save():
+                show_error(
+                    "Settings Error",
+                    "Failed to save schedule. Changes may not persist."
+                )
     
     def _on_autostart_toggled(self, is_enabled: bool):
         """Called when autostart is toggled from tray menu."""
@@ -148,7 +168,11 @@ class MoMoApp:
         
         if success:
             self._settings.auto_start = is_enabled
-            self._settings_manager.save()
+            if not self._settings_manager.save():
+                show_error(
+                    "Settings Error",
+                    "Failed to save auto-start setting. Changes may not persist."
+                )
             self._tray_icon.set_autostart(is_enabled)
         else:
             # Revert the UI state if failed

@@ -109,8 +109,11 @@ class ScheduleManager:
             return False
         
         # Parse start and end times
-        start_time = self._parse_time(day_schedule.start_time)
-        end_time = self._parse_time(day_schedule.stop_time)
+        try:
+            start_time = self._parse_time(day_schedule.start_time)
+            end_time = self._parse_time(day_schedule.stop_time)
+        except ValueError:
+            return False
         
         # Get current time only
         current_time = check_time.time()
@@ -159,7 +162,7 @@ class ScheduleManager:
             if day_offset == 0 and target_datetime <= now:
                 # Check if we're still within today's schedule
                 end_time = self._parse_time(day_schedule.stop_time)
-                if now.time() <= end_time:
+                if self._is_time_in_range(now.time(), start_time, end_time):
                     return now  # Currently active
                 continue
             

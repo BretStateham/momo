@@ -13,6 +13,23 @@ from typing import Callable, Dict, Optional
 from pathlib import Path
 
 
+def _is_valid_time_str(time_str: object) -> bool:
+    """Validate a time string in HH:MM 24-hour format with leading zeros."""
+    if not isinstance(time_str, str):
+        return False
+    parts = time_str.split(':')
+    if len(parts) != 2:
+        return False
+    hours_str, minutes_str = parts[0], parts[1]
+    if len(hours_str) != 2 or len(minutes_str) != 2:
+        return False
+    if not (hours_str.isdigit() and minutes_str.isdigit()):
+        return False
+    hours = int(hours_str)
+    minutes = int(minutes_str)
+    return 0 <= hours <= 23 and 0 <= minutes <= 59
+
+
 @dataclass
 class DaySchedule:
     """Schedule configuration for a single day."""
@@ -27,10 +44,20 @@ class DaySchedule:
     @classmethod
     def from_dict(cls, data: Dict) -> 'DaySchedule':
         """Create from dictionary."""
+        defaults = cls()
+        enabled = data.get('enabled', defaults.enabled)
+        if not isinstance(enabled, bool):
+            enabled = defaults.enabled
+        start_time = data.get('start_time', defaults.start_time)
+        if not _is_valid_time_str(start_time):
+            start_time = defaults.start_time
+        stop_time = data.get('stop_time', defaults.stop_time)
+        if not _is_valid_time_str(stop_time):
+            stop_time = defaults.stop_time
         return cls(
-            enabled=data.get('enabled', True),
-            start_time=data.get('start_time', '08:00'),
-            stop_time=data.get('stop_time', '17:00')
+            enabled=enabled,
+            start_time=start_time,
+            stop_time=stop_time
         )
 
 
