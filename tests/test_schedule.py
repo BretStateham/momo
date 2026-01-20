@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
+import momo.schedule as schedule_module
 from momo.schedule import ScheduleManager
 from momo.settings import WeeklySchedule, DaySchedule
 
@@ -143,3 +144,85 @@ class TestScheduleEdgeCases:
         # Monday at 8:30 AM - should be inside
         test_time = datetime(2026, 1, 19, 8, 30)
         assert manager.is_within_schedule(test_time) is True
+
+    def test_is_within_schedule_invalid_time_strings(self):
+        """Test that invalid time strings return False without raising."""
+        schedule = WeeklySchedule()
+        schedule.monday = DaySchedule(enabled=True, start_time="invalid", stop_time="17:00")
+        manager = ScheduleManager(schedule)
+
+        test_time = datetime(2026, 1, 19, 10, 0)
+        assert manager.is_within_schedule(test_time) is False
+
+    def test_get_next_active_time_currently_active(self, monkeypatch):
+        """Test get_next_active_time returns now when currently active."""
+        fixed_now = datetime(2026, 1, 19, 10, 0)  # Monday
+
+        class FixedDateTime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return fixed_now
+
+        monkeypatch.setattr(schedule_module, "datetime", FixedDateTime)
+
+        schedule = WeeklySchedule()
+        schedule.monday = DaySchedule(enabled=True, start_time="08:00", stop_time="17:00")
+        manager = ScheduleManager(schedule)
+
+        assert manager.get_next_active_time() == fixed_now
+
+    def test_get_next_active_time_future_today(self, monkeypatch):
+        """Test get_next_active_time returns today's start time when upcoming."""
+        fixed_now = datetime(2026, 1, 19, 7, 0)  # Monday
+
+        class FixedDateTime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return fixed_now
+
+        monkeypatch.setattr(schedule_module, "datetime", FixedDateTime)
+
+        schedule = WeeklySchedule()
+        schedule.monday = DaySchedule(enabled=True, start_time="08:00", stop_time="17:00")
+        manager = ScheduleManager(schedule)
+
+        expected = datetime(2026, 1, 19, 8, 0)
+        assert manager.get_next_active_time() == expected
+
+    def test_get_next_active_time_overnight_currently_active(self, monkeypatch):
+        """Test overnight schedule reports currently active across midnight."""
+        fixed_now = datetime(2026, 1, 19, 23, 0)  # Monday
+
+        class FixedDateTime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return fixed_now
+
+        monkeypatch.setattr(schedule_module, "datetime", FixedDateTime)
+
+        schedule = WeeklySchedule()
+        schedule.monday = DaySchedule(enabled=True, start_time="22:00", stop_time="06:00")
+        manager = ScheduleManager(schedule)
+
+        assert manager.get_next_active_time() == fixed_now
+
+    def test_get_next_active_time_returns_none_when_disabled(self, monkeypatch):
+        """Test get_next_active_time returns None when no days are enabled."""
+        fixed_now = datetime(2026, 1, 19, 10, 0)
+
+        class FixedDateTime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return fixed_now
+
+        monkeypatch.setattr(schedule_module, "datetime", FixedDateTime)
+
+        schedule = WeeklySchedule()
+        for i in range(7):
+            day = schedule.get_day(i)
+            day.enabled = False
+            schedule.set_day(i, day)
+
+        manager = ScheduleManager(schedule)
+
+        assert manager.get_next_active_time() is None
