@@ -307,13 +307,21 @@ class ScheduleDialog:
         self._dialog.bind('<Escape>', lambda e: self._on_cancel())
     
     def _validate_time(self, time_str: str) -> bool:
-        """Validate a time string in HH:MM format."""
+        """Validate a time string in HH:MM format with leading zeros."""
         try:
+            if not isinstance(time_str, str):
+                return False
             parts = time_str.split(':')
             if len(parts) != 2:
                 return False
-            hours = int(parts[0])
-            minutes = int(parts[1])
+            hours_str, minutes_str = parts[0], parts[1]
+            # Enforce two-digit format for consistency
+            if len(hours_str) != 2 or len(minutes_str) != 2:
+                return False
+            if not (hours_str.isdigit() and minutes_str.isdigit()):
+                return False
+            hours = int(hours_str)
+            minutes = int(minutes_str)
             return 0 <= hours <= 23 and 0 <= minutes <= 59
         except (ValueError, AttributeError):
             return False

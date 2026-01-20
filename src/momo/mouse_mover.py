@@ -186,5 +186,4 @@ class MouseMover:
 
 
 # Import wintypes for POINT structure
-ctypes.wintypes = ctypes.wintypes if hasattr(ctypes, 'wintypes') else type('wintypes', (), {})()
 import ctypes.wintypes

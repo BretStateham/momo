@@ -161,9 +161,14 @@ class TrayIcon:
     
     def _on_autostart_clicked(self, icon, item):
         """Handle autostart toggle click."""
-        self._autostart_enabled = not self._autostart_enabled
+        desired_state = not self._autostart_enabled
         if self._on_toggle_autostart:
-            self._on_toggle_autostart(self._autostart_enabled)
+            # Let the callback handle the state change
+            # The app will call set_autostart() to update our state if successful
+            self._on_toggle_autostart(desired_state)
+        else:
+            # No callback registered; just update local state
+            self._autostart_enabled = desired_state
     
     def _on_exit_clicked(self, icon, item):
         """Handle exit click."""

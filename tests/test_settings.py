@@ -52,11 +52,16 @@ class TestWeeklySchedule:
     def test_default_weekdays_enabled(self):
         """Test that weekdays are enabled by default."""
         schedule = WeeklySchedule()
-        assert schedule.monday.enabled is True
-        assert schedule.tuesday.enabled is True
-        assert schedule.wednesday.enabled is True
-        assert schedule.thursday.enabled is True
-        assert schedule.friday.enabled is True
+        weekdays = [
+            schedule.monday,
+            schedule.tuesday,
+            schedule.wednesday,
+            schedule.thursday,
+            schedule.friday,
+        ]
+        # All weekdays should be enabled
+        assert all(day.enabled for day in weekdays)
+        assert sum(1 for day in weekdays if day.enabled) == 5
     
     def test_default_weekends_disabled(self):
         """Test that weekends are disabled by default."""

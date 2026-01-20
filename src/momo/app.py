@@ -12,12 +12,11 @@ The main entry point that coordinates all components:
 
 import sys
 import threading
-import time
 from typing import Optional
 
 from .idle_detector import IdleDetector
 from .mouse_mover import MouseMover
-from .settings import SettingsManager, Settings
+from .settings import SettingsManager
 from .schedule import ScheduleManager
 from .tray_icon import TrayIcon
 from .autostart import AutoStartManager
@@ -96,7 +95,10 @@ class MoMoApp:
     
     def _on_mouse_movement_complete(self):
         """Called when mouse movement completes."""
-        # Keep the green icon visible for a short time
+        # Reset movement flag immediately so we can respond to new idle events
+        self._is_moving = False
+        
+        # Keep the green icon visible for a short time (visual feedback only)
         if self._active_icon_timer:
             self._active_icon_timer.cancel()
         
@@ -109,7 +111,6 @@ class MoMoApp:
     
     def _reset_active_icon(self):
         """Reset the tray icon to normal state."""
-        self._is_moving = False
         self._tray_icon.set_active(False)
     
     def _on_monitoring_toggled(self, is_enabled: bool):
