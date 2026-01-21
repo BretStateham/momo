@@ -33,14 +33,14 @@ class TrayIcon:
         """Initialize the tray icon."""
         self._icon: Any = None  # pystray.Icon instance
         self._is_active = False
-        self._is_monitoring = True
+        self._monitoring_enabled = True
+        self._within_schedule = True
+        self._schedule_label = "Schedule: Not configured"
         self._lock = threading.RLock()
         
         # Callbacks
         self._on_start_stop: Optional[Callable[[bool], None]] = None
-        self._on_configure_threshold: Optional[Callable[[], None]] = None
-        self._on_configure_schedule: Optional[Callable[[], None]] = None
-        self._on_toggle_autostart: Optional[Callable[[bool], None]] = None
+        self._on_configure: Optional[Callable[[], None]] = None
         self._on_exit: Optional[Callable[[], None]] = None
         
         # State
@@ -106,7 +106,7 @@ class TrayIcon:
     def _get_current_icon(self) -> Image.Image:
         """Get the icon based on current state."""
         with self._lock:
-            if not self._is_monitoring:
+            if not (self._monitoring_enabled and self._within_schedule):
                 return self._disabled_icon
             elif self._is_active:
                 return self._active_icon
@@ -116,28 +116,29 @@ class TrayIcon:
     def _create_menu(self) -> Menu:
         """Create the context menu."""
         with self._lock:
-            monitoring_text = "Stop Monitoring" if self._is_monitoring else "Start Monitoring"
-            autostart_text = "✓ Start with Windows" if self._autostart_enabled else "Start with Windows"
+            if not self._within_schedule:
+                monitoring_text = "Monitoring disabled in schedule"
+            elif self._monitoring_enabled:
+                monitoring_text = "Stop Monitoring"
+            else:
+                monitoring_text = "Start Monitoring"
+            schedule_text = self._schedule_label
         
         return Menu(
             MenuItem(
                 monitoring_text,
-                self._on_start_stop_clicked
+                self._on_start_stop_clicked,
+                enabled=lambda item: self._within_schedule
+            ),
+            MenuItem(
+                schedule_text,
+                None,
+                enabled=False
             ),
             Menu.SEPARATOR,
             MenuItem(
-                f"Idle Threshold: {self._current_threshold}s",
-                self._on_threshold_clicked
-            ),
-            MenuItem(
-                "Configure Schedule...",
-                self._on_schedule_clicked
-            ),
-            Menu.SEPARATOR,
-            MenuItem(
-                autostart_text,
-                self._on_autostart_clicked,
-                checked=lambda item: self._get_autostart_enabled()
+                "Configuration...",
+                self._on_configure_clicked
             ),
             Menu.SEPARATOR,
             MenuItem(
@@ -149,35 +150,18 @@ class TrayIcon:
     def _on_start_stop_clicked(self, icon, item):
         """Handle start/stop menu click."""
         with self._lock:
-            self._is_monitoring = not self._is_monitoring
-            new_state = self._is_monitoring
+            if not self._within_schedule:
+                return
+            self._monitoring_enabled = not self._monitoring_enabled
+            new_state = self._monitoring_enabled
         self._update_icon()
         if self._on_start_stop:
             self._on_start_stop(new_state)
     
-    def _on_threshold_clicked(self, icon, item):
-        """Handle threshold configuration click."""
-        if self._on_configure_threshold:
-            self._on_configure_threshold()
-    
-    def _on_schedule_clicked(self, icon, item):
-        """Handle schedule configuration click."""
-        if self._on_configure_schedule:
-            self._on_configure_schedule()
-    
-    def _on_autostart_clicked(self, icon, item):
-        """Handle autostart toggle click."""
-        with self._lock:
-            desired_state = not self._autostart_enabled
-        if self._on_toggle_autostart:
-            # Let the callback handle the state change and update UI
-            # The callback is responsible for calling set_autostart() on success
-            self._on_toggle_autostart(desired_state)
-        else:
-            # No callback registered; just update local state
-            with self._lock:
-                self._autostart_enabled = desired_state
-            self._update_icon()
+    def _on_configure_clicked(self, icon, item):
+        """Handle configuration click."""
+        if self._on_configure:
+            self._on_configure()
     
     def _on_exit_clicked(self, icon, item):
         """Handle exit click."""
@@ -201,11 +185,6 @@ class TrayIcon:
             icon_obj.icon = new_icon
             icon_obj.menu = new_menu
 
-    def _get_autostart_enabled(self) -> bool:
-        """Thread-safe getter for autostart state."""
-        with self._lock:
-            return self._autostart_enabled
-    
     def set_active(self, is_active: bool) -> None:
         """
         Set the active state (green icon when moving mouse).
@@ -225,7 +204,14 @@ class TrayIcon:
             is_monitoring: True when monitoring is enabled
         """
         with self._lock:
-            self._is_monitoring = is_monitoring
+            self._monitoring_enabled = is_monitoring
+        self._update_icon()
+
+    def set_schedule_status(self, within_schedule: bool, schedule_label: str) -> None:
+        """Set the schedule status and label used in the menu."""
+        with self._lock:
+            self._within_schedule = within_schedule
+            self._schedule_label = schedule_label
         self._update_icon()
     
     def set_autostart(self, enabled: bool) -> None:
@@ -255,17 +241,9 @@ class TrayIcon:
         """Set callback for start/stop toggle."""
         self._on_start_stop = callback
     
-    def set_on_configure_threshold(self, callback: Callable[[], None]) -> None:
-        """Set callback for threshold configuration."""
-        self._on_configure_threshold = callback
-    
-    def set_on_configure_schedule(self, callback: Callable[[], None]) -> None:
-        """Set callback for schedule configuration."""
-        self._on_configure_schedule = callback
-    
-    def set_on_toggle_autostart(self, callback: Callable[[bool], None]) -> None:
-        """Set callback for autostart toggle."""
-        self._on_toggle_autostart = callback
+    def set_on_configure(self, callback: Callable[[], None]) -> None:
+        """Set callback for configuration dialog."""
+        self._on_configure = callback
     
     def set_on_exit(self, callback: Callable[[], None]) -> None:
         """Set callback for exit."""
