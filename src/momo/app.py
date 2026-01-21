@@ -12,6 +12,7 @@ The main entry point that coordinates all components:
 
 import sys
 import threading
+from datetime import datetime
 from typing import Optional
 
 from .idle_detector import IdleDetector
@@ -20,7 +21,7 @@ from .settings import SettingsManager
 from .schedule import ScheduleManager
 from .tray_icon import TrayIcon
 from .autostart import AutoStartManager
-from .dialogs import show_threshold_dialog, show_schedule_dialog, show_error
+from .dialogs import show_configuration_dialog, show_error
 
 
 class MoMoApp:
@@ -46,6 +47,8 @@ class MoMoApp:
         self._running = False
         self._is_moving = False
         self._active_icon_timer: Optional[threading.Timer] = None
+        self._schedule_timer: Optional[threading.Timer] = None
+        self._schedule_refresh_interval = 60.0
         
         # Set up callbacks
         self._setup_callbacks()
@@ -62,6 +65,7 @@ class MoMoApp:
         self._tray_icon.set_autostart(autostart_enabled)
         self._tray_icon.set_threshold(self._settings.idle_threshold_seconds)
         self._tray_icon.set_monitoring(self._settings.monitoring_enabled)
+        self._update_schedule_state(apply_monitoring=False)
     
     def _setup_callbacks(self):
         """Set up callbacks between components."""
@@ -74,9 +78,7 @@ class MoMoApp:
         
         # Tray icon callbacks
         self._tray_icon.set_on_start_stop(self._on_monitoring_toggled)
-        self._tray_icon.set_on_configure_threshold(self._on_configure_threshold)
-        self._tray_icon.set_on_configure_schedule(self._on_configure_schedule)
-        self._tray_icon.set_on_toggle_autostart(self._on_autostart_toggled)
+        self._tray_icon.set_on_configure(self._on_configure)
         self._tray_icon.set_on_exit(self._on_exit)
     
     def _on_idle_detected(self):
@@ -129,58 +131,80 @@ class MoMoApp:
                 "Settings Error",
                 "Failed to save monitoring setting. Changes may not persist."
             )
-        
-        if is_enabled:
+        self._tray_icon.set_monitoring(is_enabled)
+        self._apply_monitoring_state()
+    
+    def _on_configure(self):
+        """Called when unified configuration is requested."""
+        current_autostart = self._autostart_manager.is_enabled()
+        result = show_configuration_dialog(self._settings, current_autostart)
+
+        if result is None:
+            return
+
+        desired_autostart = result.auto_start
+        if desired_autostart != current_autostart:
+            success = self._autostart_manager.set_enabled(desired_autostart)
+            if not success:
+                show_error(
+                    "Auto-Start Error",
+                    "Failed to update auto-start setting. Please try again."
+                )
+                desired_autostart = current_autostart
+
+        self._settings.idle_threshold_seconds = result.idle_threshold_seconds
+        self._settings.schedule = result.schedule
+        self._settings.auto_start = desired_autostart
+
+        self._idle_detector.threshold_seconds = result.idle_threshold_seconds
+        self._schedule_manager.schedule = result.schedule
+
+        self._tray_icon.set_autostart(desired_autostart)
+        self._tray_icon.set_threshold(result.idle_threshold_seconds)
+        self._tray_icon.set_monitoring(self._settings.monitoring_enabled)
+        self._update_schedule_state()
+
+        if not self._settings_manager.save():
+            show_error(
+                "Settings Error",
+                "Failed to save configuration. Changes may not persist."
+            )
+
+    def _apply_monitoring_state(self, within_schedule: Optional[bool] = None) -> None:
+        """Start or stop monitoring based on user and schedule state."""
+        if within_schedule is None:
+            within_schedule = self._schedule_manager.is_within_schedule()
+        should_monitor = self._settings.monitoring_enabled and within_schedule
+
+        if should_monitor:
             self._idle_detector.start_monitoring()
         else:
             self._idle_detector.stop_monitoring()
-    
-    def _on_configure_threshold(self):
-        """Called when threshold configuration is requested."""
-        result = show_threshold_dialog(self._settings.idle_threshold_seconds)
-        
-        if result is not None:
-            self._settings.idle_threshold_seconds = result
-            self._idle_detector.threshold_seconds = result
-            if not self._settings_manager.save():
-                show_error(
-                    "Settings Error",
-                    "Failed to save idle threshold. Changes may not persist."
-                )
-            self._tray_icon.set_threshold(result)
-    
-    def _on_configure_schedule(self):
-        """Called when schedule configuration is requested."""
-        result = show_schedule_dialog(self._settings.schedule)
-        
-        if result is not None:
-            self._settings.schedule = result
-            self._schedule_manager.schedule = result
-            if not self._settings_manager.save():
-                show_error(
-                    "Settings Error",
-                    "Failed to save schedule. Changes may not persist."
-                )
-    
-    def _on_autostart_toggled(self, is_enabled: bool):
-        """Called when autostart is toggled from tray menu."""
-        success = self._autostart_manager.set_enabled(is_enabled)
-        
-        if success:
-            self._settings.auto_start = is_enabled
-            if not self._settings_manager.save():
-                show_error(
-                    "Settings Error",
-                    "Failed to save auto-start setting. Changes may not persist."
-                )
-            self._tray_icon.set_autostart(is_enabled)
-        else:
-            # Revert the UI state if failed
-            self._tray_icon.set_autostart(not is_enabled)
-            show_error(
-                "Auto-Start Error",
-                "Failed to update auto-start setting. Please try again."
-            )
+
+    def _get_schedule_label(self) -> str:
+        """Return a schedule label for the tray menu."""
+        day_index = datetime.now().weekday()
+        day_name = self._schedule_manager.get_day_name(day_index)
+        day_schedule = self._schedule_manager.get_current_day_schedule()
+
+        if not day_schedule.enabled:
+            return f"Schedule: {day_name} disabled"
+        return f"Schedule: {day_name} {day_schedule.start_time}–{day_schedule.stop_time}"
+
+    def _update_schedule_state(self, apply_monitoring: bool = True) -> None:
+        within_schedule = self._schedule_manager.is_within_schedule()
+        schedule_label = self._get_schedule_label()
+        self._tray_icon.set_schedule_status(within_schedule, schedule_label)
+        if apply_monitoring and self._running:
+            self._apply_monitoring_state(within_schedule)
+
+    def _schedule_tick(self) -> None:
+        if not self._running:
+            return
+        self._update_schedule_state()
+        self._schedule_timer = threading.Timer(self._schedule_refresh_interval, self._schedule_tick)
+        self._schedule_timer.daemon = True
+        self._schedule_timer.start()
     
     def _on_exit(self):
         """Called when exit is requested from tray menu."""
@@ -197,10 +221,10 @@ class MoMoApp:
         and runs the event loop.
         """
         self._running = True
-        
-        # Start monitoring if enabled in settings
-        if self._settings.monitoring_enabled:
-            self._idle_detector.start_monitoring()
+        self._update_schedule_state()
+        self._schedule_timer = threading.Timer(self._schedule_refresh_interval, self._schedule_tick)
+        self._schedule_timer.daemon = True
+        self._schedule_timer.start()
         
         try:
             # Run the tray icon (blocking)
@@ -220,6 +244,8 @@ class MoMoApp:
         # Cancel any pending timers
         if self._active_icon_timer:
             self._active_icon_timer.cancel()
+        if self._schedule_timer:
+            self._schedule_timer.cancel()
         
         # Stop the tray icon
         self._tray_icon.stop()

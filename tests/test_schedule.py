@@ -72,7 +72,7 @@ class TestScheduleManager:
     
     def test_is_within_schedule_just_after_end(self):
         """Test detection just after end time."""
-        manager = ScheduleManager()
+        manager = schedule_module.ScheduleManager()
         
         # Monday at 5:01 PM
         test_time = datetime(2026, 1, 19, 17, 1)
