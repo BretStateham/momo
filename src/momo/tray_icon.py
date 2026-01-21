@@ -5,6 +5,7 @@ Provides the system tray icon and context menu for MoMo.
 """
 
 
+import threading
 from typing import Any, Callable, Optional, Tuple
 from PIL import Image, ImageDraw
 import pystray
@@ -33,6 +34,7 @@ class TrayIcon:
         self._icon: Any = None  # pystray.Icon instance
         self._is_active = False
         self._is_monitoring = True
+        self._lock = threading.RLock()
         
         # Callbacks
         self._on_start_stop: Optional[Callable[[bool], None]] = None
@@ -103,17 +105,19 @@ class TrayIcon:
     
     def _get_current_icon(self) -> Image.Image:
         """Get the icon based on current state."""
-        if not self._is_monitoring:
-            return self._disabled_icon
-        elif self._is_active:
-            return self._active_icon
-        else:
-            return self._normal_icon
+        with self._lock:
+            if not self._is_monitoring:
+                return self._disabled_icon
+            elif self._is_active:
+                return self._active_icon
+            else:
+                return self._normal_icon
     
     def _create_menu(self) -> Menu:
         """Create the context menu."""
-        monitoring_text = "Stop Monitoring" if self._is_monitoring else "Start Monitoring"
-        autostart_text = "✓ Start with Windows" if self._autostart_enabled else "Start with Windows"
+        with self._lock:
+            monitoring_text = "Stop Monitoring" if self._is_monitoring else "Start Monitoring"
+            autostart_text = "✓ Start with Windows" if self._autostart_enabled else "Start with Windows"
         
         return Menu(
             MenuItem(
@@ -133,7 +137,7 @@ class TrayIcon:
             MenuItem(
                 autostart_text,
                 self._on_autostart_clicked,
-                checked=lambda item: self._autostart_enabled
+                checked=lambda item: self._get_autostart_enabled()
             ),
             Menu.SEPARATOR,
             MenuItem(
@@ -144,10 +148,12 @@ class TrayIcon:
     
     def _on_start_stop_clicked(self, icon, item):
         """Handle start/stop menu click."""
-        self._is_monitoring = not self._is_monitoring
+        with self._lock:
+            self._is_monitoring = not self._is_monitoring
+            new_state = self._is_monitoring
         self._update_icon()
         if self._on_start_stop:
-            self._on_start_stop(self._is_monitoring)
+            self._on_start_stop(new_state)
     
     def _on_threshold_clicked(self, icon, item):
         """Handle threshold configuration click."""
@@ -161,14 +167,16 @@ class TrayIcon:
     
     def _on_autostart_clicked(self, icon, item):
         """Handle autostart toggle click."""
-        desired_state = not self._autostart_enabled
+        with self._lock:
+            desired_state = not self._autostart_enabled
         if self._on_toggle_autostart:
             # Let the callback handle the state change and update UI
             # The callback is responsible for calling set_autostart() on success
             self._on_toggle_autostart(desired_state)
         else:
             # No callback registered; just update local state
-            self._autostart_enabled = desired_state
+            with self._lock:
+                self._autostart_enabled = desired_state
             self._update_icon()
     
     def _on_exit_clicked(self, icon, item):
@@ -180,9 +188,23 @@ class TrayIcon:
     
     def _update_icon(self):
         """Update the tray icon based on current state."""
-        if self._icon:
-            self._icon.icon = self._get_current_icon()
-            self._icon.menu = self._create_menu()
+        icon_obj = None
+        new_icon = None
+        new_menu = None
+        with self._lock:
+            if self._icon:
+                icon_obj = self._icon
+                new_icon = self._get_current_icon()
+                new_menu = self._create_menu()
+
+        if icon_obj:
+            icon_obj.icon = new_icon
+            icon_obj.menu = new_menu
+
+    def _get_autostart_enabled(self) -> bool:
+        """Thread-safe getter for autostart state."""
+        with self._lock:
+            return self._autostart_enabled
     
     def set_active(self, is_active: bool) -> None:
         """
@@ -191,7 +213,8 @@ class TrayIcon:
         Args:
             is_active: True when actively moving mouse
         """
-        self._is_active = is_active
+        with self._lock:
+            self._is_active = is_active
         self._update_icon()
     
     def set_monitoring(self, is_monitoring: bool) -> None:
@@ -201,7 +224,8 @@ class TrayIcon:
         Args:
             is_monitoring: True when monitoring is enabled
         """
-        self._is_monitoring = is_monitoring
+        with self._lock:
+            self._is_monitoring = is_monitoring
         self._update_icon()
     
     def set_autostart(self, enabled: bool) -> None:
@@ -211,7 +235,8 @@ class TrayIcon:
         Args:
             enabled: True if autostart is enabled
         """
-        self._autostart_enabled = enabled
+        with self._lock:
+            self._autostart_enabled = enabled
         self._update_icon()
     
     def set_threshold(self, seconds: int) -> None:
@@ -221,7 +246,8 @@ class TrayIcon:
         Args:
             seconds: Current threshold in seconds
         """
-        self._current_threshold = seconds
+        with self._lock:
+            self._current_threshold = seconds
         self._update_icon()
     
     # Callback setters
@@ -275,9 +301,14 @@ class TrayIcon:
     
     def stop(self) -> None:
         """Stop the tray icon."""
-        if self._icon:
-            self._icon.stop()
-            self._icon = None
+        icon_to_stop = None
+        with self._lock:
+            if self._icon:
+                icon_to_stop = self._icon
+                self._icon = None
+
+        if icon_to_stop:
+            icon_to_stop.stop()
     
     def show_notification(self, title: str, message: str) -> None:
         """
@@ -287,5 +318,10 @@ class TrayIcon:
             title: Notification title
             message: Notification message
         """
-        if self._icon:
-            self._icon.notify(message, title)
+        icon_obj = None
+        with self._lock:
+            if self._icon:
+                icon_obj = self._icon
+
+        if icon_obj:
+            icon_obj.notify(message, title)

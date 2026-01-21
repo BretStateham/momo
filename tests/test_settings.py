@@ -11,7 +11,7 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-from momo.settings import DaySchedule, WeeklySchedule, Settings, SettingsManager
+from momo.settings import DaySchedule, WeeklySchedule, Settings, SettingsManager, _is_valid_time_str
 
 
 class TestDaySchedule:
@@ -44,6 +44,37 @@ class TestDaySchedule:
         assert schedule.enabled is False
         assert schedule.start_time == "07:00"
         assert schedule.stop_time == "15:00"
+
+    @pytest.mark.parametrize(
+        "time_str,expected",
+        [
+            ("08:00", True),
+            ("00:00", True),
+            ("23:59", True),
+            ("8:00", False),
+            ("25:00", False),
+            ("12:60", False),
+            ("12:5", False),
+            ("not a time", False),
+            (None, False),
+            (1234, False),
+        ],
+    )
+    def test_is_valid_time_str(self, time_str, expected):
+        """Test time validation helper for HH:MM format."""
+        assert _is_valid_time_str(time_str) is expected
+
+    def test_from_dict_sanitizes_invalid_values(self):
+        """Test that invalid values fall back to defaults."""
+        data = {
+            'enabled': "yes",
+            'start_time': '8:00',
+            'stop_time': '25:00',
+        }
+        schedule = DaySchedule.from_dict(data)
+        assert schedule.enabled is True
+        assert schedule.start_time == "08:00"
+        assert schedule.stop_time == "17:00"
 
 
 class TestWeeklySchedule:
