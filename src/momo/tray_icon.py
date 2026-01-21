@@ -188,10 +188,18 @@ class TrayIcon:
     
     def _update_icon(self):
         """Update the tray icon based on current state."""
+        icon_obj = None
+        new_icon = None
+        new_menu = None
         with self._lock:
             if self._icon:
-                self._icon.icon = self._get_current_icon()
-                self._icon.menu = self._create_menu()
+                icon_obj = self._icon
+                new_icon = self._get_current_icon()
+                new_menu = self._create_menu()
+
+        if icon_obj:
+            icon_obj.icon = new_icon
+            icon_obj.menu = new_menu
 
     def _get_autostart_enabled(self) -> bool:
         """Thread-safe getter for autostart state."""
@@ -293,10 +301,14 @@ class TrayIcon:
     
     def stop(self) -> None:
         """Stop the tray icon."""
+        icon_to_stop = None
         with self._lock:
             if self._icon:
-                self._icon.stop()
+                icon_to_stop = self._icon
                 self._icon = None
+
+        if icon_to_stop:
+            icon_to_stop.stop()
     
     def show_notification(self, title: str, message: str) -> None:
         """
@@ -306,6 +318,10 @@ class TrayIcon:
             title: Notification title
             message: Notification message
         """
+        icon_obj = None
         with self._lock:
             if self._icon:
-                self._icon.notify(message, title)
+                icon_obj = self._icon
+
+        if icon_obj:
+            icon_obj.notify(message, title)
