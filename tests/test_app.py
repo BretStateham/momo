@@ -2,7 +2,6 @@
 Unit tests for MoMo app module.
 """
 
-import pytest
 from pathlib import Path
 from typing import Optional
 
