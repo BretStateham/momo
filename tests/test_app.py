@@ -18,7 +18,11 @@ def _build_app(monkeypatch, *,
                save_result: bool = True,
                autostart_enabled: bool = False,
                autostart_set_result: bool = True,
-               configuration_result: Optional[Settings] = None):
+               configuration_result: Optional[Settings] = None,
+               within_schedule: bool = True,
+               day_enabled: bool = True,
+               day_start: str = "08:00",
+               day_stop: str = "17:00"):
     errors: list[tuple[str, str]] = []
 
     class FakeSettingsManager:
@@ -58,6 +62,10 @@ def _build_app(monkeypatch, *,
     class FakeScheduleManager:
         def __init__(self, schedule):
             self._schedule = schedule
+            self._within_schedule = within_schedule
+            self._day_enabled = day_enabled
+            self._day_start = day_start
+            self._day_stop = day_stop
 
         @property
         def schedule(self):
@@ -68,10 +76,14 @@ def _build_app(monkeypatch, *,
             self._schedule = value
 
         def is_within_schedule(self, check_time=None):
-            return True
+            return self._within_schedule
 
         def get_current_day_schedule(self):
-            return self._schedule.get_day(0)
+            day = self._schedule.get_day(0)
+            day.enabled = self._day_enabled
+            day.start_time = self._day_start
+            day.stop_time = self._day_stop
+            return day
 
         @staticmethod
         def get_day_name(day_index):
@@ -249,3 +261,134 @@ def test_configure_autostart_toggle_failure_reverts(monkeypatch):
     assert app._settings.auto_start is False
     assert app._tray_icon.autostart_enabled is False
     assert len(errors) == 1
+
+
+def test_apply_monitoring_state_starts_when_enabled_and_in_schedule(monkeypatch):
+    settings = Settings(monitoring_enabled=True)
+    app, _ = _build_app(
+        monkeypatch,
+        settings=settings,
+        within_schedule=True
+    )
+
+    app._apply_monitoring_state(within_schedule=True)
+
+    assert app._idle_detector.start_calls == 1
+    assert app._idle_detector.stop_calls == 0
+
+
+def test_apply_monitoring_state_stops_when_outside_schedule(monkeypatch):
+    settings = Settings(monitoring_enabled=True)
+    app, _ = _build_app(
+        monkeypatch,
+        settings=settings,
+        within_schedule=False
+    )
+
+    app._apply_monitoring_state(within_schedule=False)
+
+    assert app._idle_detector.stop_calls == 1
+
+
+def test_apply_monitoring_state_stops_when_disabled(monkeypatch):
+    settings = Settings(monitoring_enabled=False)
+    app, _ = _build_app(
+        monkeypatch,
+        settings=settings,
+        within_schedule=True
+    )
+
+    app._apply_monitoring_state(within_schedule=True)
+
+    assert app._idle_detector.stop_calls == 1
+
+
+def test_get_schedule_label_enabled_day(monkeypatch):
+    fixed_now = app_module.datetime(2026, 1, 19, 10, 0)  # Monday
+
+    class FixedDateTime(app_module.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fixed_now
+
+    monkeypatch.setattr(app_module, "datetime", FixedDateTime)
+
+    settings = Settings()
+    app, _ = _build_app(
+        monkeypatch,
+        settings=settings,
+        day_enabled=True,
+        day_start="09:00",
+        day_stop="17:30"
+    )
+
+    assert app._get_schedule_label() == "Schedule: Monday 09:00–17:30"
+
+
+def test_get_schedule_label_disabled_day(monkeypatch):
+    fixed_now = app_module.datetime(2026, 1, 19, 10, 0)  # Monday
+
+    class FixedDateTime(app_module.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fixed_now
+
+    monkeypatch.setattr(app_module, "datetime", FixedDateTime)
+
+    settings = Settings()
+    app, _ = _build_app(
+        monkeypatch,
+        settings=settings,
+        day_enabled=False
+    )
+
+    assert app._get_schedule_label() == "Schedule: Monday disabled"
+
+
+def test_schedule_tick_updates_and_reschedules(monkeypatch):
+    settings = Settings()
+    app, _ = _build_app(monkeypatch, settings=settings)
+
+    calls = {"count": 0}
+
+    def fake_update():
+        calls["count"] += 1
+
+    class FakeTimer:
+        def __init__(self, interval, callback):
+            self.interval = interval
+            self.callback = callback
+            self.started = False
+
+        def start(self):
+            self.started = True
+
+        def cancel(self):
+            self.cancelled = True
+
+    monkeypatch.setattr(app, "_update_schedule_state", fake_update)
+    monkeypatch.setattr(app_module.threading, "Timer", FakeTimer)
+
+    app._running = True
+    app._schedule_tick()
+
+    assert calls["count"] == 1
+    assert isinstance(app._schedule_timer, FakeTimer)
+    assert app._schedule_timer.started is True
+
+
+def test_stop_cancels_schedule_timer(monkeypatch):
+    settings = Settings()
+    app, _ = _build_app(monkeypatch, settings=settings)
+
+    class FakeTimer:
+        def __init__(self):
+            self.cancelled = False
+
+        def cancel(self):
+            self.cancelled = True
+
+    app._schedule_timer = FakeTimer()
+    app.stop()
+
+    assert app._schedule_timer.cancelled is True

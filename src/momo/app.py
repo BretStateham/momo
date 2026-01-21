@@ -65,7 +65,7 @@ class MoMoApp:
         self._tray_icon.set_autostart(autostart_enabled)
         self._tray_icon.set_threshold(self._settings.idle_threshold_seconds)
         self._tray_icon.set_monitoring(self._settings.monitoring_enabled)
-        self._update_schedule_state()
+        self._update_schedule_state(apply_monitoring=False)
     
     def _setup_callbacks(self):
         """Set up callbacks between components."""
@@ -191,11 +191,11 @@ class MoMoApp:
             return f"Schedule: {day_name} disabled"
         return f"Schedule: {day_name} {day_schedule.start_time}–{day_schedule.stop_time}"
 
-    def _update_schedule_state(self) -> None:
+    def _update_schedule_state(self, apply_monitoring: bool = True) -> None:
         within_schedule = self._schedule_manager.is_within_schedule()
         schedule_label = self._get_schedule_label()
         self._tray_icon.set_schedule_status(within_schedule, schedule_label)
-        if self._running:
+        if apply_monitoring and self._running:
             self._apply_monitoring_state(within_schedule)
 
     def _schedule_tick(self) -> None:

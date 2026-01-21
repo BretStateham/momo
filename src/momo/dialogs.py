@@ -59,6 +59,7 @@ class ConfigurationDialog:
         try:
             style.theme_use('clam')
         except tk.TclError:
+            # If the 'clam' theme is not available, fall back to default.
             pass
 
         style.configure('Header.TLabel', font=('Segoe UI', 14, 'bold'))
